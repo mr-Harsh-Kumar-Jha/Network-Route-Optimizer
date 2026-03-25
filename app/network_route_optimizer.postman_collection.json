@@ -1,0 +1,362 @@
+{
+  "info": {
+    "name": "Network Route Optimizer",
+    "description": "Complete Postman collection for the Network Route Optimizer API.\n\nBAES Design Pattern — FastAPI + PostgreSQL + Dijkstra's Algorithm\n\nBase URL: http://localhost:8000\n\nWorkflow to test:\n1. POST /nodes → add ServerA, ServerB, ServerC, ServerD\n2. POST /edges → add edges with latency\n3. POST /routes/shortest → compute shortest path\n4. GET /routes/history → view history",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
+    "_postman_id": "nro-collection-2026"
+  },
+  "variable": [
+    {
+      "key": "base_url",
+      "value": "http://localhost:8000",
+      "type": "string"
+    }
+  ],
+  "item": [
+    {
+      "name": "Health",
+      "item": [
+        {
+          "name": "Health Check",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{base_url}}/health",
+              "host": ["{{base_url}}"],
+              "path": ["health"]
+            },
+            "description": "Returns app health, graph stats (node count, edge count), and cache stats."
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "Nodes",
+      "item": [
+        {
+          "name": "Add Node — ServerA",
+          "request": {
+            "method": "POST",
+            "header": [{"key": "Content-Type", "value": "application/json"}],
+            "url": {"raw": "{{base_url}}/nodes", "host": ["{{base_url}}"], "path": ["nodes"]},
+            "body": {"mode": "raw", "raw": "{\"name\": \"ServerA\"}"}
+          },
+          "response": []
+        },
+        {
+          "name": "Add Node — ServerB",
+          "request": {
+            "method": "POST",
+            "header": [{"key": "Content-Type", "value": "application/json"}],
+            "url": {"raw": "{{base_url}}/nodes", "host": ["{{base_url}}"], "path": ["nodes"]},
+            "body": {"mode": "raw", "raw": "{\"name\": \"ServerB\"}"}
+          },
+          "response": []
+        },
+        {
+          "name": "Add Node — ServerC",
+          "request": {
+            "method": "POST",
+            "header": [{"key": "Content-Type", "value": "application/json"}],
+            "url": {"raw": "{{base_url}}/nodes", "host": ["{{base_url}}"], "path": ["nodes"]},
+            "body": {"mode": "raw", "raw": "{\"name\": \"ServerC\"}"}
+          },
+          "response": []
+        },
+        {
+          "name": "Add Node — ServerD",
+          "request": {
+            "method": "POST",
+            "header": [{"key": "Content-Type", "value": "application/json"}],
+            "url": {"raw": "{{base_url}}/nodes", "host": ["{{base_url}}"], "path": ["nodes"]},
+            "body": {"mode": "raw", "raw": "{\"name\": \"ServerD\"}"}
+          },
+          "response": []
+        },
+        {
+          "name": "Add Node — Duplicate (expect 400)",
+          "request": {
+            "method": "POST",
+            "header": [{"key": "Content-Type", "value": "application/json"}],
+            "url": {"raw": "{{base_url}}/nodes", "host": ["{{base_url}}"], "path": ["nodes"]},
+            "body": {"mode": "raw", "raw": "{\"name\": \"ServerA\"}"}
+          },
+          "response": []
+        },
+        {
+          "name": "List All Nodes",
+          "request": {
+            "method": "GET",
+            "url": {"raw": "{{base_url}}/nodes", "host": ["{{base_url}}"], "path": ["nodes"]}
+          },
+          "response": []
+        },
+        {
+          "name": "Delete Node by ID",
+          "request": {
+            "method": "DELETE",
+            "url": {"raw": "{{base_url}}/nodes/1", "host": ["{{base_url}}"], "path": ["nodes", "1"]}
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "Edges",
+      "item": [
+        {
+          "name": "Add Edge — A→B (10ms)",
+          "request": {
+            "method": "POST",
+            "header": [{"key": "Content-Type", "value": "application/json"}],
+            "url": {"raw": "{{base_url}}/edges", "host": ["{{base_url}}"], "path": ["edges"]},
+            "body": {
+              "mode": "raw",
+              "raw": "{\"source\": \"ServerA\", \"destination\": \"ServerB\", \"latency\": 10.0}"
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Add Edge — B→D (13.4ms)",
+          "request": {
+            "method": "POST",
+            "header": [{"key": "Content-Type", "value": "application/json"}],
+            "url": {"raw": "{{base_url}}/edges", "host": ["{{base_url}}"], "path": ["edges"]},
+            "body": {
+              "mode": "raw",
+              "raw": "{\"source\": \"ServerB\", \"destination\": \"ServerD\", \"latency\": 13.4}"
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Add Edge — A→C (25ms)",
+          "request": {
+            "method": "POST",
+            "header": [{"key": "Content-Type", "value": "application/json"}],
+            "url": {"raw": "{{base_url}}/edges", "host": ["{{base_url}}"], "path": ["edges"]},
+            "body": {
+              "mode": "raw",
+              "raw": "{\"source\": \"ServerA\", \"destination\": \"ServerC\", \"latency\": 25.0}"
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Add Edge — C→D (5ms)",
+          "request": {
+            "method": "POST",
+            "header": [{"key": "Content-Type", "value": "application/json"}],
+            "url": {"raw": "{{base_url}}/edges", "host": ["{{base_url}}"], "path": ["edges"]},
+            "body": {
+              "mode": "raw",
+              "raw": "{\"source\": \"ServerC\", \"destination\": \"ServerD\", \"latency\": 5.0}"
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Add Edge — Invalid latency=0 (expect 422)",
+          "request": {
+            "method": "POST",
+            "header": [{"key": "Content-Type", "value": "application/json"}],
+            "url": {"raw": "{{base_url}}/edges", "host": ["{{base_url}}"], "path": ["edges"]},
+            "body": {
+              "mode": "raw",
+              "raw": "{\"source\": \"ServerA\", \"destination\": \"ServerB\", \"latency\": 0}"
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Add Edge — Unknown node (expect 400)",
+          "request": {
+            "method": "POST",
+            "header": [{"key": "Content-Type", "value": "application/json"}],
+            "url": {"raw": "{{base_url}}/edges", "host": ["{{base_url}}"], "path": ["edges"]},
+            "body": {
+              "mode": "raw",
+              "raw": "{\"source\": \"GhostNode\", \"destination\": \"ServerB\", \"latency\": 5.0}"
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "List All Edges",
+          "request": {
+            "method": "GET",
+            "url": {"raw": "{{base_url}}/edges", "host": ["{{base_url}}"], "path": ["edges"]}
+          },
+          "response": []
+        },
+        {
+          "name": "Delete Edge by ID",
+          "request": {
+            "method": "DELETE",
+            "url": {"raw": "{{base_url}}/edges/1", "host": ["{{base_url}}"], "path": ["edges", "1"]}
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "Routes",
+      "item": [
+        {
+          "name": "Shortest Route — A→D (expect A→B→D = 23.4ms)",
+          "request": {
+            "method": "POST",
+            "header": [{"key": "Content-Type", "value": "application/json"}],
+            "url": {"raw": "{{base_url}}/routes/shortest", "host": ["{{base_url}}"], "path": ["routes", "shortest"]},
+            "body": {
+              "mode": "raw",
+              "raw": "{\"source\": \"ServerA\", \"destination\": \"ServerD\"}"
+            },
+            "description": "Expected: path=[ServerA, ServerB, ServerD], total_latency=23.4\nNOTE: A→C→D = 30ms is longer, Dijkstra correctly picks A→B→D."
+          },
+          "response": []
+        },
+        {
+          "name": "Shortest Route — A→C",
+          "request": {
+            "method": "POST",
+            "header": [{"key": "Content-Type", "value": "application/json"}],
+            "url": {"raw": "{{base_url}}/routes/shortest", "host": ["{{base_url}}"], "path": ["routes", "shortest"]},
+            "body": {
+              "mode": "raw",
+              "raw": "{\"source\": \"ServerA\", \"destination\": \"ServerC\"}"
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Shortest Route — No Path (expect 404)",
+          "request": {
+            "method": "POST",
+            "header": [{"key": "Content-Type", "value": "application/json"}],
+            "url": {"raw": "{{base_url}}/routes/shortest", "host": ["{{base_url}}"], "path": ["routes", "shortest"]},
+            "body": {
+              "mode": "raw",
+              "raw": "{\"source\": \"ServerD\", \"destination\": \"ServerA\"}",
+              "options": {"raw": {"language": "json"}}
+            },
+            "description": "Directed graph: D has no outgoing edges, so D→A doesn't exist. Expect 404."
+          },
+          "response": []
+        },
+        {
+          "name": "Shortest Route — Unknown nodes (expect 400)",
+          "request": {
+            "method": "POST",
+            "header": [{"key": "Content-Type", "value": "application/json"}],
+            "url": {"raw": "{{base_url}}/routes/shortest", "host": ["{{base_url}}"], "path": ["routes", "shortest"]},
+            "body": {
+              "mode": "raw",
+              "raw": "{\"source\": \"Ghost1\", \"destination\": \"Ghost2\"}"
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Shortest Route — Same src & dest (expect 400)",
+          "request": {
+            "method": "POST",
+            "header": [{"key": "Content-Type", "value": "application/json"}],
+            "url": {"raw": "{{base_url}}/routes/shortest", "host": ["{{base_url}}"], "path": ["routes", "shortest"]},
+            "body": {
+              "mode": "raw",
+              "raw": "{\"source\": \"ServerA\", \"destination\": \"ServerA\"}"
+            }
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "History",
+      "item": [
+        {
+          "name": "Get All Route History",
+          "request": {
+            "method": "GET",
+            "url": {"raw": "{{base_url}}/routes/history", "host": ["{{base_url}}"], "path": ["routes", "history"]}
+          },
+          "response": []
+        },
+        {
+          "name": "History — Filter by source",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{base_url}}/routes/history?source=ServerA",
+              "host": ["{{base_url}}"],
+              "path": ["routes", "history"],
+              "query": [{"key": "source", "value": "ServerA"}]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "History — Filter by destination",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{base_url}}/routes/history?destination=ServerD",
+              "host": ["{{base_url}}"],
+              "path": ["routes", "history"],
+              "query": [{"key": "destination", "value": "ServerD"}]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "History — With limit",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{base_url}}/routes/history?limit=5",
+              "host": ["{{base_url}}"],
+              "path": ["routes", "history"],
+              "query": [{"key": "limit", "value": "5"}]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "History — Filter by date range",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{base_url}}/routes/history?date_from=2026-01-01T00:00:00Z&date_to=2026-12-31T23:59:59Z",
+              "host": ["{{base_url}}"],
+              "path": ["routes", "history"],
+              "query": [
+                {"key": "date_from", "value": "2026-01-01T00:00:00Z"},
+                {"key": "date_to", "value": "2026-12-31T23:59:59Z"}
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "History — Filter by source + destination",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{base_url}}/routes/history?source=ServerA&destination=ServerD",
+              "host": ["{{base_url}}"],
+              "path": ["routes", "history"],
+              "query": [
+                {"key": "source", "value": "ServerA"},
+                {"key": "destination", "value": "ServerD"}
+              ]
+            }
+          },
+          "response": []
+        }
+      ]
+    }
+  ]
+}
